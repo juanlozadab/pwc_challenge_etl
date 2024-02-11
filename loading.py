@@ -3,6 +3,13 @@ from dotenv import load_dotenv
 from supabase import create_client
 
 def connect_supabase_dw():
+    """ 
+    Connects to the Supabase Data Warehouse.
+    
+    Returns:
+    - Supabase client: A client object for interacting with the Supabase Data Warehouse.
+
+    """
     try:
         load_dotenv('config.env')
         url = os.getenv("SUPABASE_DW_URL")
@@ -14,6 +21,11 @@ def connect_supabase_dw():
         return None
 
 def load_data(transformed_data):
+    """
+    Loads the transformed data into the Data Warehouse.
+    Args:
+    - transformed_data: List of transformed dataframes.
+    """
     supabase = connect_supabase_dw()
     tables_to_update = ['dim_date','dim_speciality','dim_doctor','dim_patient', 'dim_test','fact_patients_stay_cost', 'fact_tests_information']
    

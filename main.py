@@ -4,6 +4,13 @@ from transformation import transform_data
 from loading import load_data
 
 def main():
+    """
+    Main function for ETL process:
+    - Extracts data from the source.
+    - Transforms the extracted data.
+    - Loads the transformed data into the Data Warehouse.
+    """
+    
     # Extract data from the source
     raw_data = extract_data()
 

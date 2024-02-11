@@ -4,7 +4,13 @@ import uuid
 
 def transform_raw_to_df(raw_data):
     """
+    Transform raw data into Pandas DataFrames.
     
+    Args:
+    - raw_data: Dictionary containing raw data from different tables.
+
+    Returns:
+    - Dictionary of Pandas DataFrames: Transformed DataFrames.
     """
     tables_data_frames = {}
     for table_name, table_data in raw_data.items():
@@ -14,22 +20,36 @@ def transform_raw_to_df(raw_data):
 
 def get_test_info_df(dfs):
     """ 
+    Generate DataFrame containing information about tests.
+
+    Args:
+    - dfs: Dictionary of DataFrames containing raw data.
+
+    Returns:
+    - DataFrame containing information about tests, including test prices and associated doctor specialties.
     """
     tests_list = []
     
     for _, admission_row in dfs['test_admission'].iterrows():
         npi_number= admission_row['npi_number']
         patient_code = admission_row['patient_code']
+        
+        # Find doctor's specialty based on NPI number
         speciality_id = dfs['doctor'][dfs['doctor']['npi_number'] == npi_number]['speciality_id'].iloc[0]
+        
         admission_test_date = admission_row['admission_datetime']
         test_dt = admission_row['test_datetime']
         test_code = admission_row['test_code']
+        
+        # Find the price of the test for the admission date
         test_price = dfs['test_cost'][
                 (dfs['test_cost']['test_code'] == test_code) &
                 (dfs['test_cost']['price_date_from'] <= admission_test_date)
             ]['price'].iloc[-1]
+        
+        # Create a new record with all the information
         data = {
-            'record_id': str(uuid.uuid4()),
+            'record_id': str(uuid.uuid4()), # Unique record identifier (AUDIT)
             'speciality_id': speciality_id,
             'npi_number' : npi_number,
             'admission_test_date': admission_test_date.strftime('%Y-%m-%d'),
@@ -37,7 +57,7 @@ def get_test_info_df(dfs):
             'patient_code': patient_code,
             'test_code': test_code,
             'test_price': test_price,
-            'etl_ts':  datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            'etl_ts':  datetime.now().strftime("%Y-%m-%d %H:%M:%S") # ETL timestamp (AUDIT)
         }
         tests_list.append(data)
     
@@ -46,7 +66,15 @@ def get_test_info_df(dfs):
     return df_tests_info
 
 def calculate_tests_per_stay(dfs):
-    
+    """
+    Calculate the tests performed during a patient's stay and the associated costs, including the stay costs.
+
+    Args:
+    - dfs: Dictionary of DataFrames containing raw data.
+
+    Returns:
+    - DataFrame containing calculated information about tests performed during patient stays, including stay costs and total costs.
+    """
     tests_per_stay_list = []
     
     for _, admission_row in dfs['admission'].iterrows():
@@ -56,6 +84,7 @@ def calculate_tests_per_stay(dfs):
         day_price = dfs['stay_daily_cost'][dfs['stay_daily_cost']['price_date_from'] <= admission_date].iloc[-1]['price']      
         
         total_days = (discharge_date - admission_date).days + 1
+        
         # Filter the test that had been taken on the stay
         tests_during_stay = dfs['test_admission'][
             (dfs['test_admission']['patient_code'] == patient_code) &
@@ -81,7 +110,7 @@ def calculate_tests_per_stay(dfs):
         
         # Create a new record with all the information collected
         data = {
-            'record_id': str(uuid.uuid4()),
+            'record_id': str(uuid.uuid4()), # Unique record identifier (AUDIT)
             'patient_code': patient_code,
             'admission_date': admission_date.strftime('%Y-%m-%d'),
             'discharge_date': discharge_date.strftime('%Y-%m-%d'),
@@ -91,7 +120,7 @@ def calculate_tests_per_stay(dfs):
             'amount_of_test_taken': test_count,
             'total_tests_cost': total_test_cost,
             'total_cost': total_test_cost + (day_price * total_days),
-            'etl_ts':  datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            'etl_ts':  datetime.now().strftime("%Y-%m-%d %H:%M:%S") # ETL timestamp (AUDIT)
             
         }
         # Add the new record to the list
@@ -103,6 +132,13 @@ def calculate_tests_per_stay(dfs):
         
 def clean_dfs(df):
     """
+    Clean the data in the DataFrame by converting data types and applying necessary transformations.
+
+    Args:
+    - df: Dictionary of DataFrames containing raw data.
+
+    Returns:
+    - df: Dictionary of DataFrames containing cleaned DataFrames.
     """
     
     # Patient
@@ -136,107 +172,163 @@ def clean_dfs(df):
 
 def get_patients(dfs):
     """
+    Extract patient data from the DataFrame and transform it into a cleaned DataFrame for the patient dimension table..
+
+    Args:
+    - dfs: Dictionary of DataFrames containing cleaned data.
+
+    Returns:
+    - Cleaned DataFrame containing patient information for the patient dimension table.    
     """
     patients_list = []
+    
     for _, patient_row in dfs['patient'].iterrows():
         patient_code = patient_row['patient_code']
         patient_name = patient_row['patient_name']
         phone_number = patient_row['phone_number']
         data = {
-            'record_id': str(uuid.uuid4()),
             'patient_code': patient_code,
             'patient_name': patient_name,
-            'phone_number': phone_number,
-            'etl_ts':  datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            'phone_number': phone_number
         }
-        patients_list.append(data)    
+        patients_list.append(data)
+        
+    # Create DataFrame from the list of doctors data         
     df_patients = pd.DataFrame(patients_list)
+    
+    # Drop duplicate records if any
     df_patients.drop_duplicates()
+    
     return df_patients
 
 def get_tests(dfs):
     """
+    Extract tests data from the DataFrame and transform it into a cleaned DataFrame for the test dimension table..
+
+    Args:
+    - dfs: Dictionary of DataFrames containing cleaned data.
+
+    Returns:
+    - Cleaned DataFrame containing tests information for the test dimension table.    
     """
     tests_list = []
     for _, test_row in dfs['test'].iterrows():
         test_code = test_row['test_code']
         test_name = test_row['test_name']
         data = {
-            'record_id': str(uuid.uuid4()),
             'test_code': test_code,
             'test_name': test_name,
-            'etl_ts':  datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
-        tests_list.append(data)    
+        tests_list.append(data)
+    # Create DataFrame from the list of doctors data           
     df_tests= pd.DataFrame(tests_list)
+    
+    # Drop duplicate records if any
     df_tests.drop_duplicates()
     
     return df_tests
 
 def get_doctors(dfs):
     """
+    Extract doctors data from the DataFrame and transform it into a cleaned DataFrame for the doctor dimension table..
+
+    Args:
+    - dfs: Dictionary of DataFrames containing cleaned data.
+
+    Returns:
+    - Cleaned DataFrame containing doctors information for the doctor dimension table.    
     """
     doctors_list = []
+    
     for _, doctor_row in dfs['doctor'].iterrows():
         doctor_code = doctor_row['npi_number']
         doctor_name = doctor_row['doctor_name']
         speciality_id = doctor_row['speciality_id']
         
-        speciality_name = dfs['speciality'][dfs['speciality']['speciality_id'] == speciality_id]['name'].iloc[0]
         data = {
-            'record_id': str(uuid.uuid4()),
             'npi_number': doctor_code,
             'doctor_name': doctor_name,
             'speciality_id': speciality_id,
-            'etl_ts':  datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
         doctors_list.append(data)    
+    
+    # Create DataFrame from the list of doctors data   
     df_doctors= pd.DataFrame(doctors_list)
+    
+    # Drop duplicate records if any
     df_doctors.drop_duplicates()
     
     return df_doctors  
 
 def get_specialitys(dfs):
     """
+    Extract specialitys data from the DataFrame and transform it into a cleaned DataFrame for the speciality dimension table..
+
+    Args:
+    - dfs: Dictionary of DataFrames containing cleaned data.
+
+    Returns:
+    - Cleaned DataFrame containing specialitys information for the speciality dimension table.    
     """
     specialitys_list = []
+    
     for _, speciality_row in dfs['speciality'].iterrows():
         speciality_id = speciality_row['speciality_id']
         speciality_name = speciality_row['name']
               
         data = {
             'speciality_id': speciality_id,
-            'record_id': str(uuid.uuid4()),
             'speciality_name': speciality_name,
-            'etl_ts':  datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
         specialitys_list.append(data)    
+     
+    # Create DataFrame from the list of specialitys data   
     df_specialitys= pd.DataFrame(specialitys_list)
+    
+    # Drop duplicate records if any
     df_specialitys.drop_duplicates()
     
     return df_specialitys 
  
 def get_dates(dfs):
+    """
+    Extract date information from various DataFrames and transform it into a DataFrame for the date dimension table.
+
+    Args:
+    - dfs: Dictionary of DataFrames containing raw data.
+
+    Returns:
+    - DataFrame containing formatted date information for the date dimension table.
+    """
     dates_list = []
     
+    # Extract dates from the 'admission' DataFrame
     for _, row in dfs['admission'].iterrows():
         adm_date = row['admission_datetime']
         dis_date = row['discharge_datetime']
         dates_list.extend([adm_date,dis_date])
+        
+    # Extract dates from the 'test_admission' DataFrame   
     for _, row in dfs['test_admission'].iterrows():
         test_adm_date = row['admission_datetime']
         test_date = row['test_datetime']
         dates_list.extend([test_adm_date,test_date])
+        
+    # Extract dates from the 'stay_daily_cost' DataFrame    
     for _, row in dfs['stay_daily_cost'].iterrows():
         price_date = row['price_date_from']
         dates_list.append(price_date)
+        
+    # Extract dates from the 'test_cost' DataFrame    
     for _, row in dfs['test_cost'].iterrows():
         test_price_date = row['price_date_from']
         dates_list.append(test_price_date)
     
+    # Remove duplicates and convert to list
     dates_list = list(set(dates_list))
     formatted_dates = []
     
+    # Format dates
     for date in dates_list:
         formatted_date = {
             'date': date.strftime('%Y-%m-%d'),
@@ -246,17 +338,22 @@ def get_dates(dfs):
             'year': date.year
         }
         formatted_dates.append(formatted_date)
+        
+    # Create DataFrame from the formatted dates    
     df_dates= pd.DataFrame(formatted_dates)
     
     return df_dates
         
 def transform_data(raw_data):
     """
-    Main transformation function, it transforms the data from lists to Pandas DataFrames, It does some cleaning,transformations and calculations.
-    Args -> raw_data: {'table_name1':[table_data1], 'table_name2':[table_data2]}
-    Returns -> final_dfs: [{'table_name1': <pandas dataframe object>}]
+    Main transformation function.
+    
+    Args:
+    - raw_data: Dictionary containing raw data from different tables.
+
+    Returns:
+    - List of Pandas DataFrames: Transformed and cleaned DataFrames.
     """
- 
     dfs = transform_raw_to_df(raw_data)  
     dfs = clean_dfs(dfs)
     df_test_per_stay = calculate_tests_per_stay(dfs)
@@ -270,5 +367,3 @@ def transform_data(raw_data):
     
     return transformed_dfs
 
-# raw_data = extract_data()
-# transform_data(raw_data)
