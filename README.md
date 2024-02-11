@@ -52,6 +52,7 @@ The table describing each test conducted by a patient is more detailed and allow
 
 Regarding the dimensional tables, we have five: dim_patient containing patient information, dim_doctor containing doctor information, dim_speciality containing medical specialty information, dim_test containing test information, and dim_date enabling analyses based on time periods.
 
+One clarification to note is that when the ETL runs, it adds two audit fields to the tables. These fields are record_id, which is a unique field, and etl_ts, which is a timestamp field. These fields allow us to identify the different loads made to the hub and filter out duplicate records in the fact tables. Duplicate fields in the dimension tables are not reloaded during ETL processing due to PK constraints.
 
 
 
