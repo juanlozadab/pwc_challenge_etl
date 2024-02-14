@@ -8,6 +8,8 @@ TECHNOLOGIES:
 For hosting and data storage, I have decided for the sake of simplicity  to create both, the source database (relational database) and the destination database (data warehouse) on the online platform 'SupaBase'. The ETL process will need to access this environment, so I will provide two sets of URLs and API keys to establish connections with both the source and the destination. This is because the free version used does not allow creating more than one database in the same project.
 * Database project: PWC_DE_Juan_Lozada_challenge
 * Datawarehouse project: PWC_DE_Juan_Lozada_challenge_DW
+
+  
 For the development of the ETL process, I have decided to use Python. The necessary libraries for execution are:
  -  os (access to variables)
  - dotenv (access to variables)
