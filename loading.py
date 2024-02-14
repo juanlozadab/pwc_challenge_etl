@@ -27,6 +27,7 @@ def load_data(transformed_data):
     - transformed_data: List of transformed dataframes.
     """
     supabase = connect_supabase_dw()
+    # the order of the list is important, be aware of the keys for the correct execution.
     tables_to_update = ['dim_date','dim_speciality','dim_doctor','dim_patient', 'dim_test','fact_patients_stay_cost', 'fact_tests_information']
    
     
